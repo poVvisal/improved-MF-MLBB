@@ -72,21 +72,42 @@ Then follow the full setup below to harden configs and generate links.
    - Proxy status: **Proxied** (orange cloud ON)
 2. Dashboard → **SSL/TLS** → **Overview** → set mode to **Flexible** (CF talks HTTP:80 to your VPS). Full/Strict will fail on No-TLS setups.
 
-### 2) VPS Preparation
-1. Ensure Port 80 is free:
-   ```bash
-   sudo lsof -i :80
-   ```
-   If something is bound (nginx/apache), stop/disable it:
-   ```bash
-   sudo systemctl stop nginx
-   sudo systemctl disable nginx
-   ```
-2. Install Marzban panel:
-   ```bash
-   sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
-   ```
-   Create admin creds when prompted, then open `http://YOUR_VPS_IP:8000/dashboard`.
+### 2) VPS Preparation (Ubuntu 20.04+)
+1. Base OS prep (as root or sudo):
+  ```bash
+  sudo apt update && sudo apt upgrade -y
+  sudo apt install -y curl ca-certificates gnupg lsof
+  ```
+2. Install Docker (Marzban uses Docker Compose under the hood):
+  ```bash
+  curl -fsSL https://get.docker.com | sudo sh
+  sudo systemctl enable --now docker
+  sudo usermod -aG docker $USER  # re-login to take effect
+  ```
+3. Open required ports (22 SSH, 80 VLESS, 8000 dashboard) with UFW:
+  ```bash
+  sudo ufw allow 22/tcp
+  sudo ufw allow 80/tcp
+  sudo ufw allow 8000/tcp
+  sudo ufw enable
+  ```
+4. Ensure Port 80 is free:
+  ```bash
+  sudo lsof -i :80
+  ```
+  If something is bound (nginx/apache), stop/disable it:
+  ```bash
+ $(lsof -i :80 | grep LISTEN | awk '{print $2}')
+  ```
+  ```bash
+  sudo systemctl stop nginx apache2
+  sudo systemctl disable nginx apache2
+  ```
+5. Install Marzban panel:
+  ```bash
+  sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
+  ```
+  Create admin creds when prompted, then open `http://YOUR_VPS_IP:8000/dashboard`.
 
 ### 3) Marzban Core Config (Port 80, clean logging)
 Replace Core Settings with:
