@@ -1,56 +1,179 @@
-# 🚀 VLESS-WebSocket-NoTLS (Cloudflare CDN Bypass)
+<div align="center">
 
-![GitHub last commit](https://img.shields.io/github/last-commit/google/skia)
-![Uptime Robot status](https://img.shields.io/uptimerobot/status/m778918-2888a)
+# 🚀 VLESS WebSocket (No TLS)
+### Cloudflare ISP Bypass Guide
 
-A comprehensive guide to deploying a **VLESS over WebSocket (Port 80)** VPN tunnel using **Marzban** and **Cloudflare**. This setup is designed to bypass ISP throttling by disguising traffic as legitimate CDN requests (the "Bug Host" method).
+[![GitHub last commit](https://img.shields.io/github/last-commit/google/skia)](https://github.com)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+
+Deploy a **blazing-fast VLESS over WebSocket on Port 80** with Marzban + Cloudflare. Bypass ISP throttling by disguising traffic as CDN requests using the classic **Bug Host** trick.
+
+[Key Features](#-key-features) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [Setup](#-setup-guide) • [Troubleshooting](#-troubleshooting)
+
+</div>
+
+---
+
+## ✨ Key Features
+- 🔒 ISP-proof tunneling that looks like normal CDN traffic
+- ⚡ Zero TLS overhead — raw WebSocket on Port 80
+- 🌐 Cloudflare shield — ISP only sees whitelisted CF IPs
+- 🎮 Gaming ready — great for Mobile Legends, PUBG, more
+- 📱 Multi-platform — v2rayNG, V2Box, Streisand
+- 🆓 Free-tier friendly — runs on Cloudflare free plan
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────┐      ┌──────────────┐      ┌────────────┐      ┌─────────────┐
+│  Your App   │─────▶│     ISP      │─────▶│ Cloudflare │─────▶│  Your VPS   │
+│  (Client)   │      │ (sees CF IP) │      │    CDN     │      │  (Port 80)  │
+└─────────────┘      └──────────────┘      └────────────┘      └─────────────┘
+```
+
+**Flow:** Client hits a public Cloudflare IP → ISP sees allowed CDN traffic → Cloudflare forwards plain HTTP WebSocket to your VPS on Port 80.
+
+---
+
+## 🎯 Quick Start
+
+```bash
+# Install Marzban
+sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
+
+# Open dashboard
+http://YOUR_VPS_IP:8000/dashboard
+```
+
+Then follow the full setup below to harden configs and generate links.
 
 ---
 
 ## 📋 Prerequisites
 
-Before you begin, ensure you have:
-* **A VPS (Virtual Private Server):** Ubuntu 20.04+ (Recommended: 1 CPU / 1GB+ RAM).
-* **A Domain Name:** Managed via Cloudflare.
-* **Cloudflare Account:** Free tier is sufficient.
+| Requirement | Specification | Notes |
+|-------------|---------------|-------|
+| 🖥️ VPS | Ubuntu 20.04+ | 1 CPU / 1GB RAM is fine |
+| 🌐 Domain | Any TLD | Must use Cloudflare DNS |
+| ☁️ Cloudflare | Free account | Keep it on the orange cloud |
 
 ---
 
-## 🛠️ Architecture
+## 🛠️ Setup Guide
 
-**The "Sandwich" Model:**
-`[Client App]` ➔ `[ISP (sees Cloudflare IP)]` ➔ `[Cloudflare CDN]` ➔ `[Your VPS (Port 80)]`
+### 1) Cloudflare Configuration (critical)
+1. Dashboard → **DNS** → add **A record**
+   - Name: `vpn` (or any subdomain)
+   - IPv4: your VPS IP
+   - Proxy status: **Proxied** (orange cloud ON)
+2. Dashboard → **SSL/TLS** → **Overview** → set mode to **Flexible** (CF talks HTTP:80 to your VPS). Full/Strict will fail on No-TLS setups.
 
-* **Client Side:** Connects to a public Cloudflare IP (e.g., `104.17.x.x`) but requests your specific domain in the Host Header.
-* **Cloudflare Side:** Receives the HTTPS request, handles the encryption, and forwards plain HTTP traffic to your VPS.
-* **Server Side:** Listens on Port 80 (No TLS) for the WebSocket connection.
+### 2) VPS Preparation
+1. Ensure Port 80 is free:
+   ```bash
+   sudo lsof -i :80
+   ```
+   If something is bound (nginx/apache), stop/disable it:
+   ```bash
+   sudo systemctl stop nginx
+   sudo systemctl disable nginx
+   ```
+2. Install Marzban panel:
+   ```bash
+   sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
+   ```
+   Create admin creds when prompted, then open `http://YOUR_VPS_IP:8000/dashboard`.
+
+### 3) Marzban Core Config (Port 80, clean logging)
+Replace Core Settings with:
+
+```json
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "ip": ["geoip:private"],
+        "outboundTag": "BLOCK"
+      }
+    ]
+  },
+  "inbounds": [
+    {
+      "tag": "VLESS_WS_80",
+      "listen": "0.0.0.0",
+      "port": 80,
+      "protocol": "vless",
+      "settings": {
+        "clients": [],
+        "decryption": "none",
+        "fallbacks": []
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/",
+          "headers": {}
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    { "protocol": "freedom", "tag": "DIRECT" },
+    { "protocol": "blackhole", "tag": "BLOCK" }
+  ]
+}
+```
+
+Save, then Restart Core.
+
+### 4) Create the Inbound (listener)
+- Inbounds → **Create Inbound**
+- Tag: `MLBB-NoTLS` (any name)
+- Protocol: `VLESS`
+- Port: `80`
+- Network: `ws`
+- Path: `/`
+- Security: `none`
+
+**Link settings (for instant QR/URIs):**
+- Server IP: `104.17.125.32` (any valid Cloudflare IP)
+- SNI/Host: `vpn.yourdomain.com` (your proxied subdomain)
+
+### 5) Client Configuration (v2rayNG / V2Box / Streisand)
+
+| Setting | Value | Note |
+|---------|-------|------|
+| Address | 104.17.125.32 | Use a Cloudflare IP; rotate if slow |
+| Port | 80 | Must match inbound |
+| Protocol | VLESS | |
+| UUID | From Marzban | Copy per-user |
+| Network | ws | |
+| Path | / | |
+| Host | vpn.yourdomain.com | Your CF subdomain |
+| SNI | vpn.yourdomain.com | Same as Host |
+| TLS | None / off | No TLS overhead |
+
+**Alternative Cloudflare IPs:** 104.16.125.32, 162.159.128.7, 104.21.78.140, 172.64.155.10. Change only the Address, keep Host/SNI.
 
 ---
 
-## ⚙️ Step 1: Cloudflare Configuration
-
-1.  **DNS Records:**
-    * Go to **DNS** > **Records**.
-    * Add an **A Record**:
-        * **Name:** `vpn` (or your preferred subdomain).
-        * **IPv4:** Your VPS IP Address.
-        * **Proxy Status:** ✅ **Proxied** (Orange Cloud).
-
-2.  **SSL/TLS Settings (CRITICAL):**
-    * Go to **SSL/TLS** > **Overview**.
-    * Set encryption mode to **Flexible**.
-    * *Why?* The connection between Cloudflare and your VPS must be unencrypted (Port 80), while the client connection remains secure.
+## 🛠️ Troubleshooting
+- Connection refused or core fails: Port 80 busy. Run `sudo lsof -i :80` and stop the offender.
+- Connected but no internet: Cloudflare SSL mode must be **Flexible**, not Full/Strict.
+- 404/403 errors: Path must be `/`; Host/SNI must exactly match your subdomain.
+- Slow or high ping: Rotate the Cloudflare IP (Address field) to a different option above.
 
 ---
 
-## 🖥️ Step 2: VPS Preparation
-
-SSH into your server and prepare the environment.
-
-### 1. Clear Port 80
-Ensure no web servers (Nginx/Apache) are occupying Port 80.
-```bash
-sudo lsof -i :80
-# If a process is found (e.g., nginx), stop it:
-sudo systemctl stop nginx
-sudo systemctl disable nginx
+## ⚠️ Disclaimer
+This guide is for educational and research purposes only. Use responsibly and comply with local laws and your ISP's terms of service.
