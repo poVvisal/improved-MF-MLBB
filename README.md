@@ -74,40 +74,42 @@ Then follow the full setup below to harden configs and generate links.
 
 ### 2) VPS Preparation (Ubuntu 20.04+)
 1. Base OS prep (as root or sudo):
-  ```bash
-  sudo apt update && sudo apt upgrade -y
-  sudo apt install -y curl ca-certificates gnupg lsof
-  ```
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   sudo apt install -y curl ca-certificates gnupg lsof
+   ```
 2. Install Docker (Marzban uses Docker Compose under the hood):
-  ```bash
-  curl -fsSL https://get.docker.com | sudo sh
-  sudo systemctl enable --now docker
-  sudo usermod -aG docker $USER  # re-login to take effect
-  ```
+   ```bash
+   curl -fsSL https://get.docker.com | sudo sh
+   sudo systemctl enable --now docker
+   sudo usermod -aG docker $USER  # re-login to take effect
+   ```
 3. Open required ports (22 SSH, 80 VLESS, 8000 dashboard) with UFW:
-  ```bash
-  sudo ufw allow 22/tcp
-  sudo ufw allow 80/tcp
-  sudo ufw allow 8000/tcp
-  sudo ufw enable
-  ```
+   ```bash
+   sudo ufw allow 22/tcp
+   sudo ufw allow 80/tcp
+   sudo ufw allow 8000/tcp
+   sudo ufw enable
+   ```
 4. Ensure Port 80 is free:
-  ```bash
-  sudo lsof -i :80
-  ```
-  If something is bound (nginx/apache), stop/disable it:
-  ```bash
- $(lsof -i :80 | grep LISTEN | awk '{print $2}')
-  ```
-  ```bash
-  sudo systemctl stop nginx apache2
-  sudo systemctl disable nginx apache2
-  ```
+   ```bash
+   sudo lsof -i :80
+   ```
+   If something is bound (nginx/apache), stop/disable it:
+   ```bash
+   sudo systemctl stop nginx apache2
+   sudo systemctl disable nginx apache2
+   ```
 5. Install Marzban panel:
-  ```bash
-  sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
-  ```
-  Create admin creds when prompted, then open `http://YOUR_VPS_IP:8000/dashboard`.
+   ```bash
+   sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/marzban.sh)" @ install
+   ```
+   Create admin creds when prompted, then open `http://YOUR_VPS_IP:8000/dashboard`.
+6. (Optional) Create/rotate an admin user via CLI if you skipped the prompt or need a new one:
+   ```bash
+   sudo docker exec -it marzban bash -lc "marzban cli create-user --username admin --password 'StrongPass123' --expire 0 --data-limit 0"
+   ```
+   Replace `admin`/`StrongPass123` as desired. `--expire 0` and `--data-limit 0` mean no limits.
 
 ### 3) Marzban Core Config (Port 80, clean logging)
 Replace Core Settings with:
@@ -174,7 +176,7 @@ Save, then Restart Core.
 
 | Setting | Value | Note |
 |---------|-------|------|
-| Address | 104.17.125.32 | Use a Cloudflare IP; rotate if slow |
+| Address | 104.16.125.32 | Use a Cloudflare IP; rotate if slow |
 | Port | 80 | Must match inbound |
 | Protocol | VLESS | |
 | UUID | From Marzban | Copy per-user |
