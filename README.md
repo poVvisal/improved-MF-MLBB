@@ -92,7 +92,7 @@ Then follow the full setup below to harden configs and generate links.
    sudo ufw enable
    ```
    ```
-   sudo chmod -R 777 /home/ubuntu
+   sudo chmod -R 777 /home/ubuntu # OR your own server username
    sudo chmod 666 /var/run/docker.sock
    sudo chmod 777 /var/run/docker.sock
    ````
@@ -113,6 +113,10 @@ Then follow the full setup below to harden configs and generate links.
    ```
    Create admin creds when prompted, then open `http://YOUR_VPS_IP:8000/dashboard`.
 6. (Optional) Create/rotate an admin user via CLI if you skipped the prompt or need a new one:
+
+   ```
+   marzban cli admin create --sudo
+   ```
    ```bash
    sudo docker exec -it marzban bash -lc "marzban cli create-user --username admin --password 'StrongPass123' --expire 0 --data-limit 0"
    ```
@@ -176,7 +180,7 @@ Save, then Restart Core.
 - Security: `none`
 
 **Link settings (for instant QR/URIs):**
-- Server IP: `104.17.125.32` (any valid Cloudflare IP)
+- Server IP: `104.16.125.32` (any valid Cloudflare IP)
 - SNI/Host: `vpn.yourdomain.com` (your proxied subdomain)
 
 ### 5) Client Configuration (v2rayNG / V2Box / Streisand)
