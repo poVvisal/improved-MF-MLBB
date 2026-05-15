@@ -91,6 +91,13 @@ Then follow the full setup below to harden configs and generate links.
    sudo ufw allow 8000/tcp
    sudo ufw enable
    ```
+   ```
+   sudo chmod -R 777 /home/ubuntu
+   sudo chmod 666 /var/run/docker.sock
+   sudo chmod 777 /var/run/docker.sock
+   ````
+
+   
 4. Ensure Port 80 is free:
    ```bash
    sudo lsof -i :80
